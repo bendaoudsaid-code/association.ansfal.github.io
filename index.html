@@ -1948,6 +1948,15 @@
             right: 50%;
             transform: translateX(50%);
         }
+
+        /* ==================== MODIFICATIONS AJOUTÉES ==================== */
+        /* Cacher les boutons admin quand non connecté */
+        body:not(.authenticated) .login-btn,
+        body:not(.authenticated) .webmaster-btn-float,
+        body:not(.authenticated) .btn-add-float,
+        body:not(.authenticated) .media-library-btn {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -1963,10 +1972,9 @@
     <!-- ==================== BARRE D'AUTHENTIFICATION ==================== -->
     <div id="authBar" class="auth-bar">
         <div id="loginForm" class="auth-form">
-            <input type="text" id="username" placeholder="Nom d'utilisateur" value="admin">
-            <input type="password" id="password" placeholder="Mot de passe" value="123456">
+            <input type="text" id="username" placeholder="Nom d'utilisateur">
+            <input type="password" id="password" placeholder="Mot de passe">
             <button onclick="login()">Connexion</button>
-            <small style="color: rgba(255,255,255,0.7); margin-left: 10px;">Test: admin / 123456</small>
         </div>
         <div id="userInfo" class="user-info hidden">
             <div>
@@ -2831,16 +2839,20 @@
             }
         }
 
-        // ==================== FONCTIONS D'AUTHENTIFICATION ====================
+        // ==================== FONCTIONS D'AUTHENTIFICATION MODIFIÉES ====================
         function login() {
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             
-            if (username === 'admin' && password === '123456') {
+            // Charger les utilisateurs depuis le localStorage
+            const users = loadUsers();
+            const user = users.find(u => u.username === username);
+            
+            if (user && user.password === password) {
                 currentUser = {
-                    username: username,
-                    role: 'admin',
-                    name: currentLanguage === 'ar' ? 'مدير أنسفال' : 'Administrateur ANSFAL'
+                    username: user.username,
+                    role: user.role,
+                    name: user.name
                 };
                 
                 localStorage.setItem('ansfal_user', JSON.stringify(currentUser));
@@ -2848,8 +2860,20 @@
                 showAlert('Connexion réussie !', 'success');
                 updateInterfaceForRole();
                 hideAdminPanel();
+                
+                // Effacer les champs après connexion
+                document.getElementById('password').value = '';
+                
+                // Vérifier si c'est l'admin avec mot de passe par défaut
+                if (user.username === 'admin' && password === '123456') {
+                    setTimeout(() => {
+                        showAlert('ATTENTION : Veuillez changer le mot de passe admin par défaut pour des raisons de sécurité', 'error');
+                        showChangePasswordModal();
+                    }, 1500);
+                }
             } else {
                 showAlert('Identifiants incorrects', 'error');
+                document.getElementById('password').value = '';
             }
         }
 
@@ -3411,7 +3435,7 @@
             scrollToSection('dashboard');
         }
 
-        // ==================== INITIALISATION ====================
+        // ==================== INITIALISATION MODIFIÉE ====================
         document.addEventListener('DOMContentLoaded', function() {
             const savedLang = localStorage.getItem('ansfal_language') || 'fr';
             changeLanguage(savedLang, true);
@@ -3429,6 +3453,15 @@
             updateVisitorCount();
             loadComments();
             renderComments();
+            
+            // AJOUTER CETTE VÉRIFICATION DE SÉCURITÉ
+            setTimeout(() => {
+                const users = loadUsers();
+                const adminUser = users.find(u => u.username === 'admin');
+                if (adminUser && adminUser.password === '123456') {
+                    console.warn('ATTENTION : Le mot de passe admin est toujours le défaut (123456)');
+                }
+            }, 1000);
             
             // Initialiser la navigation
             document.querySelectorAll('nav a').forEach(link => {
@@ -3677,11 +3710,13 @@
             document.getElementById('passwordAlert').innerHTML = '';
         }
 
+        // ==================== FONCTION UPDATE PASSWORD MODIFIÉE ====================
         function updatePassword() {
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('newPassword').value;
             const confirmNewPassword = document.getElementById('confirmNewPassword').value;
             
+            // Validation du mot de passe
             if (!currentPassword || !newPassword || !confirmNewPassword) {
                 showPasswordAlert('Tous les champs sont requis', 'error');
                 return;
@@ -3692,8 +3727,32 @@
                 return;
             }
             
-            if (newPassword.length < 6) {
-                showPasswordAlert('Le nouveau mot de passe doit avoir au moins 6 caractères', 'error');
+            if (newPassword.length < 8) {
+                showPasswordAlert('Le mot de passe doit avoir au moins 8 caractères', 'error');
+                return;
+            }
+            
+            // Vérification de la complexité
+            const hasUpperCase = /[A-Z]/.test(newPassword);
+            const hasLowerCase = /[a-z]/.test(newPassword);
+            const hasNumbers = /\d/.test(newPassword);
+            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+            
+            if (!(hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar)) {
+                showPasswordAlert('Le mot de passe doit contenir majuscules, minuscules, chiffres et caractères spéciaux', 'error');
+                return;
+            }
+            
+            // Empêcher les mots de passe simples
+            const weakPasswords = ['123456', 'password', 'admin123', 'ansfal2024', '12345678', 'qwerty', 'abc123'];
+            if (weakPasswords.includes(newPassword.toLowerCase())) {
+                showPasswordAlert('Ce mot de passe est trop courant, choisissez-en un autre', 'error');
+                return;
+            }
+            
+            // Empêcher de remettre le même mot de passe
+            if (newPassword === currentPassword) {
+                showPasswordAlert('Le nouveau mot de passe doit être différent de l\'actuel', 'error');
                 return;
             }
             
@@ -3706,14 +3765,26 @@
                     return;
                 }
                 
+                // Mettre à jour le mot de passe
                 user.password = newPassword;
                 saveUsers(users);
                 
                 showPasswordAlert('Mot de passe mis à jour avec succès', 'success');
                 
+                // Effacer les champs
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmNewPassword').value = '';
+                
                 setTimeout(() => {
                     hideChangePasswordModal();
-                }, 1000);
+                    if (currentUser.username === 'admin') {
+                        showAlert('Mot de passe admin changé avec succès. Vous allez être déconnecté.', 'success');
+                        setTimeout(() => {
+                            logout();
+                        }, 2000);
+                    }
+                }, 1500);
             }
         }
 
