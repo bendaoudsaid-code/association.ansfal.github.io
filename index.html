@@ -2612,7 +2612,7 @@
         let imgbbApiKey = 'ef721aa2f219a57af9b0d4b05dd0db2a';
         let editingUserId = null;
 
-        // Traductions
+        // Traductions AVEC LOGO AJOUTÉ
         const translations = {
             'fr': {
                 // Navigation
@@ -2625,6 +2625,10 @@
                 'navComments': 'Commentaires',
                 'navContact': 'Contact',
                 'navDashboard': 'Dashboard',
+                
+                // Logo
+                'siteTitle': 'ASSOCIATION ANSFAL',
+                'siteSubtitle': 'Coopération, Développement & Environnement',
                 
                 // Hero
                 'heroTitle': 'ANSFAL',
@@ -2684,6 +2688,10 @@
                 'navComments': 'التعليقات',
                 'navContact': 'اتصل',
                 'navDashboard': 'لوحة التحكم',
+                
+                // Logo
+                'siteTitle': 'جمعية أنسفال',
+                'siteSubtitle': 'التعاون، التنمية والبيئة',
                 
                 // Hero
                 'heroTitle': 'أنسفال',
@@ -2771,6 +2779,7 @@
             const t = translations[lang];
             if (!t) return;
             
+            // Traduire le logo
             document.querySelectorAll('[data-id]').forEach(element => {
                 const id = element.getAttribute('data-id');
                 if (t[id] && element.hasAttribute('data-editable')) {
@@ -2836,6 +2845,21 @@
             const noCommentsDiv = document.querySelector('.no-comments');
             if (noCommentsDiv && t['noComments']) {
                 noCommentsDiv.textContent = t['noComments'];
+            }
+            
+            // Mettre à jour le texte du footer (logo aussi)
+            const footerLogoTitle = document.querySelector('.footer-logo h3');
+            if (footerLogoTitle && lang === 'ar') {
+                footerLogoTitle.textContent = 'أنسفال';
+            } else if (footerLogoTitle) {
+                footerLogoTitle.textContent = 'ANSFAL';
+            }
+            
+            const footerLogoSubtitle = document.querySelector('.footer-logo p');
+            if (footerLogoSubtitle && lang === 'ar') {
+                footerLogoSubtitle.textContent = 'التعاون، التنمية والبيئة';
+            } else if (footerLogoSubtitle) {
+                footerLogoSubtitle.textContent = 'Coopération, Développement & Environnement';
             }
         }
 
